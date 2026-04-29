@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kontakt - SoulBrothers</title>
+<meta name="description" content="Skontaktuj się z SoulBrothers - napisz, zadzwoń lub odwiedź nasz showroom w Bytomiu. Odpowiadamy w 24 godziny.">
+<link rel="icon" href="img/logo.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy: #0a2540; --blue: #1a6bbc; --blue-light: #3a8fd4;
+  --blue-pale: #e8f3fc; --gold: #c9963a; --gold-light: #e8b860;
+  --white: #fff; --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+  --text: #0d2137; --text-muted: #6b7280;
+  --r: 8px; --rlg: 16px;
+  --font-body: 'Outfit', sans-serif;
+  --font-display: 'Barlow Condensed', sans-serif;
+}
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body { font-family: var(--font-body); color: var(--text); background: var(--white); overflow-x: hidden; }
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 80px;
+  display: flex; align-items: center;
+  background: transparent;
+  transition: background 0.35s, box-shadow 0.35s;
+  transform: translateY(-100%);
+  animation: navSlideIn 1.1s 0.1s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+@keyframes navSlideIn { to { transform: translateY(0); } }
+nav.scrolled {
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 1px 0 rgba(26,107,188,0.1), 0 4px 24px rgba(10,37,64,0.07);
+}
+.nav-inner {
+  width: 100%; display: flex; align-items: center;
+  justify-content: space-between; padding: 0 max(4vw, 40px); gap: 2rem;
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 12px;
+  text-decoration: none; padding-top: 12px; margin-left: 200px;
+}
+.nav-logo img { height: 58px; width: 58px; object-fit: contain; border-radius: var(--r); }
+.nav-logo-text { font-family: var(--font-body); font-size: 1.9rem; font-weight: 700; color: white; line-height: 1; transition: color 0.3s; }
+nav.scrolled .nav-logo-text { color: var(--navy); }
+.logo-soul { color: var(--blue-light); }
+nav.scrolled .logo-soul { color: var(--blue); }
+.nav-links { display: flex; align-items: center; gap: 1.6rem; list-style: none; }
+.nav-links a {
+  text-decoration: none; font-size: 0.96rem; font-weight: 400;
+  color: rgba(255,255,255,0.85); display: flex; align-items: center; gap: 6px;
+  position: relative; transition: color 0.2s; white-space: nowrap;
+}
+.nav-links a svg { width: 14px; height: 14px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.nav-links a::after { content: ''; position: absolute; bottom: -4px; left: 0; right: 0; height: 1.5px; background: rgba(255,255,255,0.7); transform: scaleX(0); transition: transform 0.25s; transform-origin: left; }
+nav.scrolled .nav-links a { color: var(--text-muted); }
+nav.scrolled .nav-links a::after { background: var(--blue); }
+.nav-links a:hover { color: white; }
+nav.scrolled .nav-links a:hover { color: var(--blue); }
+.nav-links a:hover::after { transform: scaleX(1); }
+.nav-right { display: flex; align-items: center; gap: 1.4rem; margin-right: 200px; }
+.nav-kontakt-pill {
+  display: flex; align-items: center; gap: 7px;
+  padding: 9px 20px; border-radius: 100px;
+  background: var(--navy); border: 1px solid var(--navy);
+  color: white; text-decoration: none; font-size: 0.92rem; font-weight: 600;
+  transition: all 0.2s; white-space: nowrap;
+}
+.nav-kontakt-pill svg { width: 14px; height: 14px; fill: none; stroke: white; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.nav-kontakt-pill:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.4); }
+nav.scrolled .nav-kontakt-pill { background: rgba(26,107,188,0.1); border-color: rgba(26,107,188,0.3); color: var(--blue); }
+nav.scrolled .nav-kontakt-pill svg { stroke: var(--blue); }
+nav.scrolled .nav-kontakt-pill:hover { background: var(--blue); border-color: var(--blue); color: white; }
+nav.scrolled .nav-kontakt-pill:hover svg { stroke: white; }
+.nav-hamburger { display: none; flex-direction: column; justify-content: center; align-items: center; gap: 5px; width: 36px; height: 36px; cursor: pointer; border: none; background: none; padding: 0; flex-shrink: 0; }
+.nav-hamburger span { display: block; width: 22px; height: 2px; border-radius: 2px; background: var(--navy); transition: transform 0.28s ease, opacity 0.2s ease, background 0.3s; }
+
+/* Mobile menu overlay */
+.mobile-menu-overlay {
+  position: fixed; top: 80px; left: 0; right: 0; bottom: 0; z-index: 198;
+  background: white; display: flex; flex-direction: column; overflow-y: auto;
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path 0.4s cubic-bezier(0.16,1,0.3,1);
+  pointer-events: none;
+}
+.mobile-menu-overlay.open { clip-path: inset(0 0 0% 0); pointer-events: auto; }
+.mobile-menu-links { display: flex; flex-direction: column; flex: 1; padding: 0.5rem 0; }
+.mobile-menu-links a {
+  display: block; font-family: var(--font-body); font-size: 1.1rem; font-weight: 500;
+  color: var(--text); text-decoration: none;
+  padding: 1rem max(5vw,24px);
+  border-bottom: 1px solid var(--gray-200);
+  transition: color 0.15s, background 0.15s;
+}
+.mobile-menu-links a:last-child { border-bottom: none; }
+.mobile-menu-links a:hover, .mobile-menu-links a:active { color: var(--blue); background: var(--blue-pale); }
+
+/* Hamburger → X */
+.nav-hamburger.is-open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-hamburger.is-open span:nth-child(2) { opacity: 0; }
+.nav-hamburger.is-open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* Nav biały gdy menu otwarte */
+nav.menu-open { background: rgba(255,255,255,0.96) !important; backdrop-filter: blur(16px) !important; box-shadow: 0 1px 0 rgba(26,107,188,0.1), 0 4px 24px rgba(10,37,64,0.07) !important; }
+nav.menu-open .nav-hamburger span { background: var(--navy) !important; }
+body.menu-open .sb-float { opacity: 1 !important; pointer-events: auto !important; transform: translateY(0) !important; }
+
+/* force white — podstrona */
+nav { background: rgba(255,255,255,0.96) !important; backdrop-filter: blur(16px) !important; box-shadow: 0 1px 0 rgba(26,107,188,0.10), 0 4px 24px rgba(10,37,64,0.07) !important; }
+.nav-logo-text { color: var(--navy) !important; }
+.logo-soul { color: var(--blue) !important; }
+.nav-links a { color: var(--text-muted) !important; }
+.nav-links a::after { background: var(--blue) !important; }
+.nav-links a:hover { color: var(--blue) !important; }
+.nav-hamburger span { background: var(--navy) !important; }
+.nav-kontakt-pill { background: var(--navy) !important; border-color: var(--navy) !important; color: white !important; }
+.nav-kontakt-pill:hover { background: var(--blue) !important; border-color: var(--blue) !important; color: white !important; }
+
+/* HERO - thin, image, minimal */
+.hero { position: relative; height: 220px; overflow: hidden; margin-top: 80px; }
+.hero-bg { position: absolute; inset: 0; background-image: url('img/reszta3.jfif'); background-size: cover; background-position: center; filter: saturate(1.1) contrast(1.05); }
+.hero-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(6,14,28,0.4) 0%, rgba(6,14,28,0.85) 100%); }
+.hero-inner { position: relative; z-index: 1; width: 100%; padding: 0 max(5vw,40px) 2.5rem; max-width: 1200px; margin: 0 auto; }
+.hero-eyebrow { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.5); display: block; margin-bottom: 0.6rem; }
+.hero h1 { font-family: var(--font-display); font-size: clamp(2.4rem,5vw,3.8rem); font-weight: 700; color: white; line-height: 1.06; }
+.hero h1 em { font-style: normal; color: var(--gold-light); }
+
+/* QUICK CONTACT BAR */
+.quick-bar { background: var(--navy); padding: 1rem max(5vw,40px); }
+.quick-bar-inner { max-width: 1200px; margin: 0 auto; display: flex; gap: 3rem; align-items: center; flex-wrap: wrap; justify-content: center; }
+.qb-item { display: flex; align-items: center; gap: 10px; text-decoration: none; color: rgba(255,255,255,0.7); font-size: 0.88rem; transition: color 0.2s; }
+.qb-item:hover { color: white; }
+.qb-item svg { width: 15px; height: 15px; fill: none; stroke: var(--gold-light); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.qb-sep { width: 1px; height: 18px; background: rgba(255,255,255,0.15); }
+
+/* TOPIC GRID - 2×2, dark minimal */
+.topics { padding: 5rem max(5vw,40px); background: var(--white); }
+.topics-inner { max-width: 1100px; margin: 0 auto; }
+.topics-header { margin-bottom: 2.5rem; }
+.sec-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); display: block; margin-bottom: 0.5rem; }
+.sec-title { font-family: var(--font-display); font-size: clamp(2rem,3.5vw,3rem); font-weight: 700; color: var(--navy); line-height: 1.08; }
+.sec-sub { font-size: 0.92rem; color: var(--text-muted); font-weight: 300; margin-top: 0.5rem; line-height: 1.7; }
+.topic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.topic-card {
+  background: var(--navy);
+  border-radius: var(--rlg); padding: 2.8rem 2.4rem;
+  background-clip: padding-box;
+  text-decoration: none; display: flex; flex-direction: column;
+  min-height: 300px; position: relative; overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.25,0.8,0.25,1), box-shadow 0.3s;
+}
+.topic-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 60%); pointer-events: none; }
+.topic-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 28px 70px rgba(10,37,64,0.32); background: #142f52; }
+.topic-card:hover .topic-cta { opacity: 1; gap: 14px; }
+.topic-card:hover .topic-icon { background: rgba(255,255,255,0.16); transform: scale(1.1); }
+.topic-icon { transition: background 0.3s, transform 0.3s; }
+.topic-num { font-family: var(--font-display); font-size: 5rem; font-weight: 700; color: rgba(201,150,58,0.12); line-height: 1; position: absolute; top: 1.5rem; right: 2rem; }
+.topic-icon { width: 46px; height: 46px; border-radius: var(--r); background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; margin-bottom: 1.6rem; }
+.topic-icon svg { width: 22px; height: 22px; fill: none; stroke: rgba(255,255,255,0.8); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.topic-label { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold-light); margin-bottom: 0.6rem; display: block; }
+.topic-title { font-family: var(--font-display); font-size: 1.9rem; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 0.8rem; }
+.topic-desc { font-size: 0.86rem; color: rgba(255,255,255,0.5); font-weight: 300; line-height: 1.7; margin-bottom: auto; padding-bottom: 1.8rem; flex-grow: 1; }
+.topic-cta { display: inline-flex; align-items: center; gap: 8px; color: white; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.04em; opacity: 0.7; transition: opacity 0.2s, gap 0.2s; margin-top: auto; }
+.topic-card:hover .topic-cta { opacity: 1; gap: 12px; }
+.topic-cta svg { width: 14px; height: 14px; fill: none; stroke: white; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* MAP + INFO */
+.location { padding: 5rem max(5vw,40px); background: var(--gray-50); }
+.location-inner { max-width: 1200px; margin: 0 auto; }
+.location-inner .sec-title { margin-bottom: 2.5rem; }
+.loc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; border-radius: var(--rlg); overflow: hidden; box-shadow: 0 4px 30px rgba(10,37,64,0.10); }
+.map-wrap { height: 460px; position: relative; z-index: 0; isolation: isolate; }
+#map { width: 100%; height: 100%; }
+.info-panel { background: var(--navy); display: flex; flex-direction: column; height: 460px; }
+.info-row { display: flex; align-items: flex-start; gap: 16px; padding: 1.6rem 2rem; border-bottom: 1px solid rgba(255,255,255,0.07); flex: 1; }
+.info-row:last-child { border-bottom: none; }
+.info-icon { width: 36px; height: 36px; border-radius: var(--r); background: rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+.info-icon svg { width: 16px; height: 16px; fill: none; stroke: rgba(255,255,255,0.6); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.info-lbl { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-light); opacity: 0.7; margin-bottom: 4px; }
+.info-val { font-size: 0.94rem; font-weight: 600; color: white; line-height: 1.4; }
+.info-val a { color: white; text-decoration: none; }
+.info-val a:hover { text-decoration: underline; }
+.info-sub { font-size: 0.78rem; color: rgba(255,255,255,0.4); font-weight: 300; margin-top: 2px; }
+
+/* TEAM */
+.team { background: var(--gray-50); padding: 5.5rem max(5vw,40px); border-top: 1px solid var(--gray-200); }
+.team-inner { max-width: 1200px; margin: 0 auto; }
+.team-inner .sec-title { margin-bottom: 3rem; }
+.team-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
+.team-card {
+  background: white; padding: 2.4rem 1.8rem 2rem;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  transition: background 0.25s, box-shadow 0.3s, transform 0.3s;
+  position: relative; overflow: hidden;
+  border: 1px solid var(--gray-200); border-radius: var(--rlg);
+}
+.team-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 0.35s cubic-bezier(0.22,1,0.36,1);
+}
+.team-card:hover::before { transform: scaleX(1); }
+.team-card:hover { box-shadow: 0 8px 30px rgba(10,37,64,0.10); transform: translateY(-4px); border-color: rgba(26,107,188,0.2); }
+.t-avatar { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; color: white; margin-bottom: 1.2rem; background: var(--navy); }
+
+.t-name { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; color: var(--navy); margin-bottom: 2px; }
+.t-role { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.8rem; }
+.t-desc { font-size: 0.82rem; color: var(--text-muted); line-height: 1.65; font-weight: 300; flex-grow: 1; margin-bottom: 1.4rem; }
+.t-links { display: flex; gap: 8px; }
+.t-link { width: 34px; height: 34px; border-radius: var(--r); border: 1px solid var(--gray-200); display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--text-muted); transition: all 0.2s; }
+.t-link:hover { border-color: var(--navy); color: var(--navy); background: white; }
+.t-link svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* FOOTER */
+footer { background: #060f1a; color: rgba(255,255,255,0.45); padding: 2.5rem 5vw 1.5rem; }
+.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+.footer-brand p { font-size: 0.84rem; line-height: 1.75; margin-top: 1rem; font-weight: 300; }
+.footer-col h4 { color: white; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 1.2rem; }
+.footer-col a { display: block; color: rgba(255,255,255,0.38); font-size: 0.84rem; text-decoration: none; margin-bottom: 0.7rem; transition: color 0.2s; }
+.footer-col a:hover { color: var(--blue-light); }
+.footer-bottom { padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem; flex-wrap: wrap; gap: 1rem; }
+.footer-socials { display: flex; gap: 8px; }
+.footer-social { width: 36px; height: 36px; border-radius: var(--r); border: 1px solid rgba(255,255,255,0.09); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.45); text-decoration: none; transition: all 0.2s; }
+.footer-social:hover { border-color: var(--gold); color: var(--gold-light); }
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE — TABLET (≤900px)
+══════════════════════════════════════════════════════ */
+@media(max-width:900px) {
+  .nav-logo { margin-left: 0 !important; }
+  .nav-right { margin-right: 0 !important; }
+  .nav-links { display: none !important; }
+  .nav-kontakt-pill { display: none !important; }
+  .nav-hamburger { display: flex !important; }
+  .team-grid { grid-template-columns: 1fr 1fr; }
+  .loc-grid { grid-template-columns: 1fr; }
+  .map-wrap { height: 300px; }
+  .info-panel { height: auto; }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+  .topic-grid { grid-template-columns: 1fr 1fr; }
+}
+@media(min-width:901px) {
+  .nav-logo { margin-left: 200px; }
+  .nav-right { margin-right: 200px; }
+}
+@media(min-width:901px) and (max-width:1300px) {
+  .nav-logo { margin-left: max(2vw,20px) !important; }
+  .nav-right { margin-right: max(2vw,20px) !important; }
+}
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE — MOBILE (≤600px)
+══════════════════════════════════════════════════════ */
+@media(max-width:600px) {
+  /* Nav */
+  .nav-logo img { height: 44px !important; width: 44px !important; }
+  .nav-logo-text { font-size: 1.5rem !important; }
+
+  /* Hero */
+  .hero { height: 170px; }
+
+  /* Quick bar */
+  .quick-bar { padding: 0; }
+  .quick-bar-inner { flex-direction: column; gap: 0; }
+  .qb-sep { width: 100%; height: 1px; }
+  .qb-item { justify-content: center; padding: 0.85rem 5vw; }
+
+  /* Topics */
+  .topics { padding: 2.5rem 5vw; }
+  .topic-grid { grid-template-columns: 1fr !important; gap: 10px; }
+  .topic-card { min-height: auto; padding: 1.8rem 1.6rem; }
+  .topic-title { font-size: 1.5rem; }
+  .topic-desc { font-size: 0.82rem; }
+  .sec-title { font-size: 1.9rem; }
+  .topics-header { margin-bottom: 1.8rem; }
+
+  /* Location / Map */
+  .location { padding: 2.5rem 5vw; }
+  .loc-grid { grid-template-columns: 1fr !important; }
+  .map-wrap { height: 240px !important; }
+  .info-panel { height: auto !important; }
+  .info-row { padding: 1.1rem 1.4rem; gap: 12px; }
+  .info-val { font-size: 0.88rem; }
+
+  /* Team */
+  .team { padding: 2.5rem 5vw; }
+  .team-grid { grid-template-columns: 1fr !important; gap: 10px; }
+  .team-card {
+    display: grid !important;
+    grid-template-columns: 52px 1fr !important;
+    grid-template-rows: auto auto auto auto !important;
+    column-gap: 14px !important;
+    row-gap: 2px !important;
+    padding: 1.2rem !important;
+    text-align: left !important;
+    align-items: start !important;
+  }
+  .t-avatar {
+    grid-column: 1 !important; grid-row: 1 / 3 !important;
+    width: 52px !important; height: 52px !important;
+    margin-bottom: 0 !important; font-size: 1rem !important;
+    align-self: center !important;
+  }
+  .t-name   { grid-column: 2 !important; grid-row: 1 !important; font-size: 1rem !important; margin-bottom: 0 !important; align-self: end !important; }
+  .t-role   { grid-column: 2 !important; grid-row: 2 !important; font-size: 0.6rem !important; margin-bottom: 0 !important; align-self: start !important; }
+  .t-desc   { grid-column: 1 / 3 !important; grid-row: 3 !important; font-size: 0.78rem !important; margin-top: 0.7rem !important; margin-bottom: 0.6rem !important; }
+  .t-links  { grid-column: 1 / 3 !important; grid-row: 4 !important; }
+  .t-link { width: 32px !important; height: 32px !important; }
+
+  /* Footer */
+  .footer-grid { grid-template-columns: 1fr !important; }
+  .footer-bottom { flex-direction: column; align-items: flex-start; gap: 0.8rem; }
+}
+
+/* Quick bar — kolumna dla wąskich ekranów (do 719px) */
+@media(max-width:719px) {
+  .quick-bar { padding: 0; }
+  .quick-bar-inner { flex-direction: column; gap: 0; }
+  .qb-sep { width: 100%; height: 1px; }
+  .qb-item { justify-content: center; padding: 0.85rem 5vw; }
+}
+[data-a] {
+  opacity: 0;
+  transform: translate(36px, 36px);
+  transition: opacity 1.5s cubic-bezier(0.16,1,0.3,1), transform 1.5s cubic-bezier(0.16,1,0.3,1);
+}
+[data-a="up"] { transform: translateY(36px); }
+[data-a="left"] { transform: translateX(-50px); }
+[data-a].go { opacity: 1; transform: translate(0,0); }
+
+.footer-grid {
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 1.4s cubic-bezier(0.16,1,0.3,1), transform 1.4s cubic-bezier(0.16,1,0.3,1);
+}
+.footer-bottom {
+  opacity: 0; transform: translateY(14px);
+  transition: opacity 1.2s 0.28s cubic-bezier(0.16,1,0.3,1), transform 1.2s 0.28s cubic-bezier(0.16,1,0.3,1);
+}
+footer.footer-revealed .footer-grid  { opacity: 1; transform: translateY(0); }
+footer.footer-revealed .footer-bottom { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<nav id="mainNav">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">
+      <img src="img/logo.png" alt="SoulBrothers">
+      <span class="nav-logo-text"><span class="logo-soul">Soul</span>Brothers</span>
+    </a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="index.html">Strona główna</a></li>
+        <li><a href="produkty.html">Produkty</a></li>
+        <li><a href="serwis.html">Serwis</a></li>
+        <li><a href="strefa-klienta.html">Strefa klienta</a></li>
+      </ul>
+      <a href="kontakt.html" class="nav-kontakt-pill">Kontakt</a>
+    <button class="nav-hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+
+<div class="mobile-menu-overlay" id="mobileMenuOverlay">
+  <div class="mobile-menu-links">
+    <a href="index.html">Strona główna</a>
+    <a href="produkty.html">Produkty</a>
+    <a href="serwis.html">Serwis</a>
+    <a href="strefa-klienta.html">Strefa klienta</a>
+    <a href="kontakt.html">Kontakt</a>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-overlay"></div>
+
+</div>
+
+<div class="quick-bar">
+  <div class="quick-bar-inner">
+    <a href="tel:+48123456789" class="qb-item">
+      <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 012 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      +48 123 456 789
+    </a>
+    <div class="qb-sep"></div>
+    <a href="mailto:kontakt@soulbrothers.pl" class="qb-item">
+      <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      kontakt@soulbrothers.pl
+    </a>
+    <div class="qb-sep"></div>
+    <div class="qb-item">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Pon–Pt 9:00–17:00
+    </div>
+  </div>
+</div>
+
+<div class="topics">
+  <div class="topics-inner">
+    <div class="topics-header" data-a="up">
+      <span class="sec-label">Jak możemy pomóc?</span>
+      <h2 class="sec-title">Wybierz temat</h2>
+      <p class="sec-sub">Kliknij interesujący Cię obszar - przejdziesz do strony z FAQ i formularzem kontaktowym.</p>
+    </div>
+    <div class="topic-grid">
+      <a href="kontakt-wycena.html" class="topic-card" data-a data-d="0">
+        <span class="topic-num">01</span>
+        <div class="topic-icon"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+        <span class="topic-label">Zapytanie handlowe</span>
+        <div class="topic-title">Wycena produktu</div>
+        <div class="topic-desc">Chcesz poznać cenę sauny, bali lub basenu? Przygotujemy indywidualną ofertę w ciągu 24 godzin. Montaż zawsze w cenie.</div>
+        <div class="topic-cta">Zapytaj o wycenę <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a href="serwis.html" class="topic-card" data-a data-d="150">
+        <span class="topic-num">02</span>
+        <div class="topic-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg></div>
+        <span class="topic-label">Pomoc techniczna</span>
+        <div class="topic-title">Serwis i naprawa</div>
+        <div class="topic-desc">Coś nie działa? Certyfikowani technicy dojadą do Ciebie w ciągu 48h. Pełna gwarancja serwisowa przez 5 lat od zakupu.</div>
+        <div class="topic-cta">Przejdź do serwisu <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a href="kontakt-dostawa.html" class="topic-card" data-a data-d="300">
+        <span class="topic-num">03</span>
+        <div class="topic-icon"><svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
+        <span class="topic-label">Logistyka</span>
+        <div class="topic-title">Dostawa i montaż</div>
+        <div class="topic-desc">Kiedy dostarczymy? Jak przebiega montaż? Pytania o terminy, obszar dostawy i co dzieje się po złożeniu zamówienia.</div>
+        <div class="topic-cta">Zapytaj o dostawę <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a href="kontakt-inne.html" class="topic-card" data-a data-d="450">
+        <span class="topic-num">04</span>
+        <div class="topic-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <span class="topic-label">Pozostałe</span>
+        <div class="topic-title">Inne pytania</div>
+        <div class="topic-desc">Współpraca, media, showroom, finansowanie - cokolwiek innego. Masz pytanie które tu nie pasuje? Pisz śmiało.</div>
+        <div class="topic-cta">Napisz do nas <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="location">
+  <div class="location-inner">
+    <span class="sec-label" data-a="up">Gdzie jesteśmy</span>
+    <h2 class="sec-title" data-a="up" data-d="100">Siedziba i showroom</h2>
+    <div class="loc-grid">
+      <div class="map-wrap" data-a="left"><div id="map"></div></div>
+      <div class="info-panel" data-a data-d="150">
+        <div class="info-row">
+          <div class="info-icon"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+          <div>
+            <div class="info-lbl">Adres</div>
+            <div class="info-val">ul. Siemianowicka 98, Bytom</div>
+            <div class="info-sub">Zapraszamy do showroomu - zobaczysz produkty na żywo</div>
+          </div>
+        </div>
+        <div class="info-row">
+          <div class="info-icon"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 012 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+          <div>
+            <div class="info-lbl">Telefon</div>
+            <div class="info-val"><a href="tel:+48123456789">+48 123 456 789</a></div>
+            <div class="info-sub">Pon–Pt 9:00–17:00</div>
+          </div>
+        </div>
+        <div class="info-row">
+          <div class="info-icon"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+          <div>
+            <div class="info-lbl">E-mail</div>
+            <div class="info-val"><a href="mailto:kontakt@soulbrothers.pl">kontakt@soulbrothers.pl</a></div>
+            <div class="info-sub">Odpowiadamy w ciągu 24 godzin</div>
+          </div>
+        </div>
+        <div class="info-row">
+          <div class="info-icon"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z"/></svg></div>
+          <div>
+            <div class="info-lbl">Dane firmy</div>
+            <div class="info-val">SoulBrothers Sp. z o.o.</div>
+            <div class="info-sub">NIP: 000-000-00-00 · KRS: 0000000000</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="team">
+  <div class="team-inner">
+    <span class="sec-label" data-a="up">Nasz zespół</span>
+    <h2 class="sec-title" data-a="up" data-d="100">Zespół SoulBrothers</h2>
+    <div class="team-grid">
+      <div class="team-card" data-a="up" data-d="0">
+        <div class="t-avatar">AK</div>
+        <div class="t-name">Adam K.</div>
+        <div class="t-role">Założyciel i sprzedaż</div>
+        <div class="t-desc">12 lat w branży wellness. Doradzi w wyborze idealnej sauny, bali lub basenu.</div>
+        <div class="t-links">
+          <a href="tel:+48123456789" class="t-link"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 012 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+          <a href="mailto:kontakt@soulbrothers.pl" class="t-link"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+        </div>
+      </div>
+      <div class="team-card" data-a="up" data-d="150">
+        <div class="t-avatar">MN</div>
+        <div class="t-name">Marek N.</div>
+        <div class="t-role">Serwis i montaż</div>
+        <div class="t-desc">Certyfikowany technik systemów wodnych. Specjalista instalacji i konserwacji.</div>
+        <div class="t-links">
+          <a href="tel:+48123456789" class="t-link"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 012 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+          <a href="mailto:kontakt@soulbrothers.pl" class="t-link"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+        </div>
+      </div>
+      <div class="team-card" data-a="up" data-d="300">
+        <div class="t-avatar">KW</div>
+        <div class="t-name">Kasia W.</div>
+        <div class="t-role">Obsługa klienta</div>
+        <div class="t-desc">Pierwszy kontakt z klientem. Pomaga w zamówieniach, dostawach i pytaniach.</div>
+        <div class="t-links">
+          <a href="tel:+48123456789" class="t-link"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 012 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+          <a href="mailto:kontakt@soulbrothers.pl" class="t-link"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+        </div>
+      </div>
+      <div class="team-card" data-a="up" data-d="450">
+        <div class="t-avatar">PB</div>
+        <div class="t-name">Piotr B.</div>
+        <div class="t-role">Logistyka i dostawy</div>
+        <div class="t-desc">Koordynuje dostawy i montaże na terenie Śląska. Gwarancja terminowości.</div>
+        <div class="t-links">
+          <a href="tel:+48123456789" class="t-link"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 012 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+          <a href="mailto:kontakt@soulbrothers.pl" class="t-link"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <a href="index.html" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;margin-bottom:0.6rem">
+        <img src="img/logo.png" style="height:36px;width:36px;object-fit:contain;border-radius:var(--r)" alt="">
+        <span style="font-family:var(--font-body);font-size:1.1rem;color:white;font-weight:700"><span style="color:#3a8fd4">Soul</span>Brothers</span>
+      </a>
+      <p>Zewnętrzne sauny, balie i baseny premium.</p>
+    </div>
+    <div class="footer-col"><h4>Produkty</h4><a href="produkty.html">Sauny ogrodowe</a><a href="produkty.html">Balie ogrodowe</a><a href="produkty.html">Baseny ogrodowe</a></div>
+    <div class="footer-col"><h4>Firma</h4><a href="kontakt.html">Kontakt</a><a href="serwis.html">Serwis</a><a href="strefa-klienta.html">Strefa klienta</a></div>
+    <div class="footer-col"><h4>Pomoc</h4><a href="strefa-klienta.html">Regulamin</a><a href="strefa-klienta.html">RODO</a><a href="serwis.html">Reklamacje</a></div>
+  </div>
+  <div class="footer-bottom">
+    <div>&#169; <span id="yr"></span> SoulBrothers. Wszelkie prawa zastrzeżone.</div>
+    <div class="footer-socials">
+      <a href="#" class="footer-social"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
+      <a href="#" class="footer-social"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.getElementById('yr').textContent = new Date().getFullYear();
+
+// Mobile nav
+(function() {
+  var burger = document.getElementById('hamburger');
+  var overlay = document.getElementById('mobileMenuOverlay');
+  if (!burger || !overlay) return;
+  var nav = document.getElementById('mainNav');
+  burger.addEventListener('click', function() {
+    var isOpen = overlay.classList.toggle('open');
+    burger.classList.toggle('is-open', isOpen);
+    if (nav) nav.classList.toggle('menu-open', isOpen);
+    document.body.classList.toggle('menu-open', isOpen);
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+  });
+  overlay.querySelectorAll('a').forEach(function(a) {
+    a.addEventListener('click', function() {
+      overlay.classList.remove('open');
+      burger.classList.remove('is-open');
+      if (nav) nav.classList.remove('menu-open');
+      document.body.classList.remove('menu-open');
+      document.body.style.overflow = '';
+    });
+  });
+})();
+
+window.addEventListener('load', function() { document.body.style.transition = 'opacity 0.25s ease'; });
+document.addEventListener('click', function(e) {
+  var a = e.target.closest('a[href]');
+  if (!a) return;
+  var href = a.getAttribute('href');
+  if (!href || href === '#' || href.charAt(0) === '#') return;
+  if (href.startsWith('mailto') || href.startsWith('tel') || href.startsWith('javascript')) return;
+  if (a.target === '_blank') return;
+  if (!href.endsWith('.html')) return;
+  e.preventDefault();
+  document.body.style.opacity = '0';
+  setTimeout(function() { window.location.href = href; }, 250);
+});
+
+var map = L.map('map', { scrollWheelZoom: false }).setView([50.351, 18.913], 14);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map);
+var icon = L.divIcon({
+  className: '',
+  html: '<div style="width:42px;height:42px;background:#0a2540;border-radius:50%;border:3px solid white;box-shadow:0 2px 12px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg></div>',
+  iconSize: [42,42], iconAnchor: [21,42]
+});
+L.marker([50.351, 18.913], { icon: icon }).addTo(map).bindPopup('<strong>SoulBrothers</strong><br>ul. Siemianowicka 98, Bytom');
+</script>
+<script>
+// ════ SCROLL REVEAL ════
+(function() {
+  var obs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(en) {
+      if (!en.isIntersecting) return;
+      var el = en.target;
+      var d = parseInt(el.getAttribute('data-d') || '0');
+      setTimeout(function() { el.classList.add('go'); }, d);
+      obs.unobserve(el);
+    });
+  }, { threshold: 0.06, rootMargin: '0px 0px -20px 0px' });
+
+  document.querySelectorAll('[data-a]').forEach(function(el) { obs.observe(el); });
+
+  var footer = document.querySelector('footer');
+  if (footer) {
+    new IntersectionObserver(function(entries, o) {
+      if (entries[0].isIntersecting) { footer.classList.add('footer-revealed'); o.disconnect(); }
+    }, { threshold: 0.05 }).observe(footer);
+  }
+})();
+
+</script>
+<script src="_shared.js"></script>
+</body>
+</html>
